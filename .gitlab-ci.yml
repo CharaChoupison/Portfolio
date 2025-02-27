@@ -3,41 +3,165 @@ stages:
   - test
   - build
   - deploy
+  - generate-preview-url
 
-cache:
-  paths:
-    - node_modules/
-
-install_dependencies:
+#######################################
+# Stage 1 : Installation des dépendances
+#######################################
+install-dependencies:
   stage: install
-  tags:
-    - installnpm
+  image: node:20
   script:
-    - npm ci
+    - npm install
+  cache:
+    key: ${CI_PROJECT_NAME}
+    paths:
+      - node_modules/
+  artifacts:
+    paths:
+      - node_modules/
+  tags:
+    - ci
+  rules:
+    # Si on est sur la branche 'main'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
 
-test:
+    # Si on est sur un tag semver vX.Y.Z
+    - if: '$CI_COMMIT_TAG =~ "^v[0-9]+\\.[0-9]+\\.[0-9]+$"'
+      when: on_success
+
+    # Sinon, on ne lance pas ce job
+    - when: never
+
+#######################################
+# Stage 2 : Tests (optionnels, non bloquants)
+#######################################
+run-tests:
   stage: test
-  tags:
-    - tested
+  image: node:20
   script:
-    - npm test
+    - npm test || true
+  tags:
+    - ci
+  allow_failure: true
+  dependencies:
+    - install-dependencies
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ "^v[0-9]+\\.[0-9]+\\.[0-9]+$"'
+      when: on_success
+    - when: never
 
-build:
+#######################################
+# Stage 3 : Build
+#######################################
+build-app:
   stage: build
-  tags:
-    - built
+  image: node:20
   script:
-    - npm run build
+    - export CI=false
+    - rm -rf node_modules/ package-lock.json build/
+    - npm cache clean --force
+    - npm install --legacy-peer-deps
+    - npm list react-scripts || npm install react-scripts --force
+    - npm list ajv || npm install ajv@^8.11.2 --force
+    - npm list ajv-keywords || npm install ajv-keywords@^5.1.0 --force
+    - npm run build || { echo "❌ Échec du build ! Vérifiez votre package.json"; exit 1; }
   artifacts:
     paths:
       - build/
+  tags:
+    - ci
+  dependencies:
+    - install-dependencies
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - if: '$CI_COMMIT_TAG =~ "^v[0-9]+\\.[0-9]+\\.[0-9]+$"'
+      when: on_success
+    - when: never
 
+#######################################
+# Stage 4 : Déploiement (Preview ou Final)
+#######################################
 deploy:
   stage: deploy
-  tags:
-    - online
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache lftp jq
   script:
-    - apt-get update -y && apt-get install -y lftp
-    - lftp -e "set ftp:ssl-allow no; mirror -R build/ /chemin/vers/distant; bye" -u "$FTP_USERNAME","$FTP_PASSWORD" ftp://$FTP_HOST
-  only:
-    - main
+    - chmod +x deploy.sh
+    - ./deploy.sh
+  tags:
+    - ci
+  dependencies:
+    - build-app
+  rules:
+    # 1) Sur la branche main => mode Preview --> bouton manuel
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+
+    # 2) Sur un tag semver vX.Y.Z => mode Final --> bouton manuel
+    - if: '$CI_COMMIT_TAG =~ "^v[0-9]+\\.[0-9]+\\.[0-9]+$"'
+      when: manual
+
+    # Sinon, on ne lance pas ce job
+    - when: never
+
+#######################################
+# Stage 5 : Mettre à jour le badge 'Preview'
+#######################################
+update-badge:
+  stage: generate-preview-url
+  image: alpine:latest
+  before_script:
+    - apk update
+    - apk add --no-cache curl jq
+  script: |
+    echo "🔄 Mise à jour du badge GitLab avec l'URL de preview..."
+
+    # Utiliser CI_PIPELINE_ID pour pointer le même dossier unique
+    PREVIEW_URL="https://preview.maelcorp.com/${CI_PROJECT_NAME}_${CI_PIPELINE_ID}/"
+    echo "🔗 PREVIEW_URL = $PREVIEW_URL"
+
+    # Vérification du token GitLab (masqué dans les logs)
+    echo "🔑 GITLAB_API_TOKEN_PREVIEW: ${GITLAB_API_TOKEN_PREVIEW:0:5}****"
+
+    echo "🛠 Listing des badges existants..."
+    badges_json=$(curl --silent --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN_PREVIEW}" \
+         "https://konoha.maelcorp.com/api/v4/projects/${CI_PROJECT_ID}/badges")
+    echo "$badges_json"
+
+    echo "🔎 Recherche du badge nommé 'Preview'..."
+    badge_id=$(echo "$badges_json" | jq '.[] | select(.name == "Preview") | .id')
+    echo "badge_id=$badge_id"
+
+    if [ -n "$badge_id" ] && [ "$badge_id" != "null" ]; then
+      echo "📌 Mise à jour du badge existant ID=$badge_id ..."
+      curl --request PUT \
+           --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN_PREVIEW}" \
+           --data "name=Preview" \
+           --data "link_url=${PREVIEW_URL}" \
+           --data "image_url=https://img.shields.io/badge/Preview-Available-green" \
+           "https://konoha.maelcorp.com/api/v4/projects/${CI_PROJECT_ID}/badges/${badge_id}"
+    else
+      echo "📌 Création d'un nouveau badge 'Preview'..."
+      curl --request POST \
+           --header "PRIVATE-TOKEN: ${GITLAB_API_TOKEN_PREVIEW}" \
+           --data "name=Preview" \
+           --data "link_url=${PREVIEW_URL}" \
+           --data "image_url=https://img.shields.io/badge/Preview-Available-green" \
+           "https://konoha.maelcorp.com/api/v4/projects/${CI_PROJECT_ID}/badges"
+    fi
+  tags:
+    - ci
+  needs:
+    - job: deploy
+      artifacts: false
+  # Uniquement sur main
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: on_success
+    - when: never

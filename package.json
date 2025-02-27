@@ -5,6 +5,7 @@
   "keywords": ["react", "template", "anbu", "ci"],
   "template": true,
   "private": true,
+  "homepage": "./",
   "dependencies": {
     "axios": "^1.4.0",
     "bootstrap": "^5.3.0",
