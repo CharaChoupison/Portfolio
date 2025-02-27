@@ -1,0 +1,157 @@
+.game-page-container {
+    display: flex;
+    flex-direction: row;
+    background-color: #222;
+    height: 100vh;
+    color: #fff;
+  }
+  
+  .player-info-panel {
+    width: 250px;
+    background-color: #111;
+    padding: 20px;
+  }
+  
+  .player-info-panel h2 {
+    margin-bottom: 10px;
+    color: #00aaff;
+  }
+  
+  .player-info-panel p {
+    margin: 5px 0;
+  }
+  
+  .players-area {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    position: relative;
+  }
+  
+  .player-card {
+    text-align: center;
+  }
+  
+  .player-hero-img {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #333;
+  }
+  
+  .action-button {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #48b348;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .action-button:hover {
+    background-color: #378f37;
+  }
+  
+  .timer-container {
+    width: 120px;
+    background-color: #111;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .timer-display {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+  
+  .start-button {
+    background-color: #0088ff;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }
+  
+  .start-button:hover {
+    background-color: #006fcc;
+  }
+  
+  .quit-button {
+    background-color: #ee2222;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .quit-button:hover {
+    background-color: #cc1c1c;
+  }
+  .liste-sessions-container {
+    background-color: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    width: 600px;
+    margin: 0 auto;
+  }
+  
+  .liste-sessions-container h1 {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .create-lobby-button {
+    display: block;
+    margin: 0 auto 20px auto;
+    background-color: #3A6F6F;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .create-lobby-button:hover {
+    background-color: #2e5454;
+  }
+  
+  .sessions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .session-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: #f3f3f3;
+    padding: 10px;
+    border-radius: 4px;
+  }
+  
+  .session-name {
+    font-weight: bold;
+  }
+  
+  .join-button {
+    background-color: #ccc;
+    border: none;
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  
+  .join-button:hover {
+    background-color: #aaa;
+  }
+  
